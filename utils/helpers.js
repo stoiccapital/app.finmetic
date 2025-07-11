@@ -1,15 +1,26 @@
 // Utilities Module - Shared helper functions and utilities
 import { APP_SETTINGS, STORAGE_KEYS, UI_CONFIG } from './constants.js';
 
-// Component loader utility
+// Component loader utility with caching
 class ComponentLoader {
+    static cache = new Map();
+    
     static async loadComponent(componentPath) {
+        // Check cache first
+        if (this.cache.has(componentPath)) {
+            return this.cache.get(componentPath);
+        }
+        
         try {
             const response = await fetch(componentPath);
             if (!response.ok) {
-                throw new Error(`Failed to load component: ${componentPath}`);
+                throw new Error(`Failed to load component: ${componentPath} (${response.status})`);
             }
-            return await response.text();
+            const content = await response.text();
+            
+            // Cache the result
+            this.cache.set(componentPath, content);
+            return content;
         } catch (error) {
             console.error('Error loading component:', error);
             return null;
@@ -33,9 +44,14 @@ class ComponentLoader {
             target.innerHTML = content;
         }
     }
+    
+    // Clear cache when needed
+    static clearCache() {
+        this.cache.clear();
+    }
 }
 
-// Theme utilities
+// Theme utilities with performance improvements
 class ThemeManager {
     static getCurrentTheme() {
         return localStorage.getItem(STORAGE_KEYS.THEME) || APP_SETTINGS.DEFAULT_THEME;
@@ -43,8 +59,12 @@ class ThemeManager {
     
     static setTheme(theme) {
         localStorage.setItem(STORAGE_KEYS.THEME, theme);
+        // Use classList.toggle for better performance
         document.body.classList.remove(`theme-${UI_CONFIG.THEMES.LIGHT}`, `theme-${UI_CONFIG.THEMES.DARK}`);
         document.body.classList.add(`theme-${theme}`);
+        
+        // Dispatch custom event for theme change
+        document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme } }));
     }
     
     static initTheme() {
@@ -53,8 +73,12 @@ class ThemeManager {
     }
 }
 
-// User Profile utilities
+// User Profile utilities with memoization
 class UserProfile {
+    static _settingsCache = null;
+    static _lastCacheTime = 0;
+    static CACHE_DURATION = 5000; // 5 seconds
+    
     static getDefaultSettings() {
         return {
             account: {
@@ -71,9 +95,22 @@ class UserProfile {
     }
     
     static getUserSettings() {
+        const now = Date.now();
+        
+        // Return cached settings if still valid
+        if (this._settingsCache && (now - this._lastCacheTime) < this.CACHE_DURATION) {
+            return this._settingsCache;
+        }
+        
         try {
             const saved = localStorage.getItem(STORAGE_KEYS.USER_SETTINGS);
-            return saved ? { ...this.getDefaultSettings(), ...JSON.parse(saved) } : this.getDefaultSettings();
+            const settings = saved ? { ...this.getDefaultSettings(), ...JSON.parse(saved) } : this.getDefaultSettings();
+            
+            // Update cache
+            this._settingsCache = settings;
+            this._lastCacheTime = now;
+            
+            return settings;
         } catch (error) {
             console.error('Error loading user settings:', error);
             return this.getDefaultSettings();
@@ -86,11 +123,11 @@ class UserProfile {
             fullName = settings.account.fullName || 'John Doe';
         }
         
-        const nameParts = fullName.trim().split(' ');
+        const nameParts = fullName.trim().split(' ').filter(part => part.length > 0);
         if (nameParts.length >= 2) {
-            return nameParts[0][0] + nameParts[1][0];
+            return (nameParts[0][0] + nameParts[1][0]).toUpperCase();
         } else if (nameParts.length === 1) {
-            return nameParts[0][0] + (nameParts[0][1] || nameParts[0][0]);
+            return (nameParts[0][0] + (nameParts[0][1] || nameParts[0][0])).toUpperCase();
         }
         return 'JD';
     }
@@ -98,41 +135,56 @@ class UserProfile {
     static updateHeaderUserInfo() {
         const settings = this.getUserSettings();
         
-        // Update user name
-        const userNameElement = document.querySelector('.nav__user-name');
-        if (userNameElement) {
-            userNameElement.textContent = settings.account.fullName;
-        }
+        // Batch DOM updates for better performance
+        const updates = [
+            { selector: '.nav__user-name', value: settings.account.fullName },
+            { selector: '.nav__user-avatar', value: this.getUserInitials(settings.account.fullName) }
+        ];
         
-        // Update user avatar
-        const avatarElement = document.querySelector('.nav__user-avatar');
-        if (avatarElement) {
-            avatarElement.textContent = this.getUserInitials(settings.account.fullName).toUpperCase();
-        }
+        updates.forEach(({ selector, value }) => {
+            const element = document.querySelector(selector);
+            if (element) {
+                element.textContent = value;
+            }
+        });
     }
     
     static initUserProfile() {
-        // Wait for DOM to be ready
+        // Use requestAnimationFrame for better performance
+        const init = () => this.updateHeaderUserInfo();
+        
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                this.updateHeaderUserInfo();
-            });
+            document.addEventListener('DOMContentLoaded', init);
         } else {
-            this.updateHeaderUserInfo();
+            requestAnimationFrame(init);
         }
+    }
+    
+    // Clear cache when settings change
+    static clearCache() {
+        this._settingsCache = null;
+        this._lastCacheTime = 0;
     }
 }
 
-// Currency utilities
+// Currency utilities with memoization
 class CurrencyFormatter {
+    static _formatters = new Map();
+    
+    static getFormatter(currency = APP_SETTINGS.DEFAULT_CURRENCY) {
+        if (!this._formatters.has(currency)) {
+            this._formatters.set(currency, new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }));
+        }
+        return this._formatters.get(currency);
+    }
+    
     static formatCurrency(amount, currency = APP_SETTINGS.DEFAULT_CURRENCY) {
-        const formatter = new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: currency,
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-        
+        const formatter = this.getFormatter(currency);
         return formatter.format(amount);
     }
     
@@ -148,14 +200,30 @@ class CurrencyFormatter {
     }
 }
 
-// Date utilities
+// Date utilities with performance improvements
 class DateUtilities {
+    static _dateCache = new Map();
+    
     static formatDate(date, options = { year: 'numeric', month: 'long', day: 'numeric' }) {
         if (typeof date === 'string') {
             date = new Date(date);
         }
         
-        return date.toLocaleDateString('en-US', options);
+        const key = `${date.getTime()}-${JSON.stringify(options)}`;
+        if (this._dateCache.has(key)) {
+            return this._dateCache.get(key);
+        }
+        
+        const formatted = date.toLocaleDateString('en-US', options);
+        this._dateCache.set(key, formatted);
+        
+        // Limit cache size
+        if (this._dateCache.size > 100) {
+            const firstKey = this._dateCache.keys().next().value;
+            this._dateCache.delete(firstKey);
+        }
+        
+        return formatted;
     }
     
     static calculateDateDifference(startDate, endDate) {
@@ -178,7 +246,7 @@ class DateUtilities {
     }
 }
 
-// Local storage utilities
+// Local storage utilities with better error handling
 class StorageManager {
     static set(key, value) {
         try {
@@ -186,6 +254,17 @@ class StorageManager {
             return true;
         } catch (error) {
             console.error('Error saving to localStorage:', error);
+            // Try to clear some space if quota exceeded
+            if (error.name === 'QuotaExceededError') {
+                this.clearOldData();
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                    return true;
+                } catch (retryError) {
+                    console.error('Failed to save after cleanup:', retryError);
+                    return false;
+                }
+            }
             return false;
         }
     }
@@ -219,22 +298,38 @@ class StorageManager {
             return false;
         }
     }
+    
+    // Clear old data to free up space
+    static clearOldData() {
+        const keysToKeep = ['finmetic_user', 'finmetic_user_settings', 'theme'];
+        const allKeys = Object.keys(localStorage);
+        
+        allKeys.forEach(key => {
+            if (!keysToKeep.includes(key)) {
+                try {
+                    localStorage.removeItem(key);
+                } catch (error) {
+                    console.warn('Failed to remove old data:', key, error);
+                }
+            }
+        });
+    }
 }
 
-// Validation utilities
+// Validation utilities with improved performance
 class ValidationUtils {
+    static _emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    static _numberRegex = /^-?\d*\.?\d+$/;
+    
     static isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
+        return this._emailRegex.test(email);
     }
     
     static isValidNumber(value, min = null, max = null) {
+        if (!this._numberRegex.test(value)) return false;
         const num = parseFloat(value);
-        if (isNaN(num)) return false;
-        
         if (min !== null && num < min) return false;
         if (max !== null && num > max) return false;
-        
         return true;
     }
     
@@ -244,25 +339,27 @@ class ValidationUtils {
     }
     
     static validateRequired(value) {
-        return value !== null && value !== undefined && value !== '';
+        return value !== null && value !== undefined && value.toString().trim() !== '';
     }
 }
 
-// Animation utilities
+// Animation utilities with performance improvements
 class AnimationUtils {
     static fadeIn(element, duration = 300) {
+        if (!element) return;
+        
         element.style.opacity = '0';
         element.style.display = 'block';
         
-        let start = null;
+        const startTime = performance.now();
+        
         const fade = (timestamp) => {
-            if (!start) start = timestamp;
-            const progress = timestamp - start;
-            const opacity = Math.min(progress / duration, 1);
+            const elapsed = timestamp - startTime;
+            const progress = Math.min(elapsed / duration, 1);
             
-            element.style.opacity = opacity;
+            element.style.opacity = progress;
             
-            if (progress < duration) {
+            if (progress < 1) {
                 requestAnimationFrame(fade);
             }
         };
@@ -271,15 +368,18 @@ class AnimationUtils {
     }
     
     static fadeOut(element, duration = 300) {
-        let start = null;
+        if (!element) return;
+        
+        const startTime = performance.now();
+        const startOpacity = parseFloat(getComputedStyle(element).opacity) || 1;
+        
         const fade = (timestamp) => {
-            if (!start) start = timestamp;
-            const progress = timestamp - start;
-            const opacity = Math.max(1 - (progress / duration), 0);
+            const elapsed = timestamp - startTime;
+            const progress = Math.min(elapsed / duration, 1);
             
-            element.style.opacity = opacity;
+            element.style.opacity = startOpacity * (1 - progress);
             
-            if (progress < duration) {
+            if (progress < 1) {
                 requestAnimationFrame(fade);
             } else {
                 element.style.display = 'none';
@@ -290,21 +390,22 @@ class AnimationUtils {
     }
     
     static slideDown(element, duration = 300) {
+        if (!element) return;
+        
+        element.style.display = 'block';
         element.style.height = '0';
         element.style.overflow = 'hidden';
-        element.style.display = 'block';
         
         const targetHeight = element.scrollHeight;
+        const startTime = performance.now();
         
-        let start = null;
         const slide = (timestamp) => {
-            if (!start) start = timestamp;
-            const progress = timestamp - start;
-            const height = Math.min((progress / duration) * targetHeight, targetHeight);
+            const elapsed = timestamp - startTime;
+            const progress = Math.min(elapsed / duration, 1);
             
-            element.style.height = `${height}px`;
+            element.style.height = `${targetHeight * progress}px`;
             
-            if (progress < duration) {
+            if (progress < 1) {
                 requestAnimationFrame(slide);
             } else {
                 element.style.height = '';
@@ -316,7 +417,7 @@ class AnimationUtils {
     }
 }
 
-// Export utilities
+// Export all utilities
 export {
     ComponentLoader,
     ThemeManager,

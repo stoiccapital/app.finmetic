@@ -1,25 +1,52 @@
+// Navbar Component
 class Navbar {
     constructor() {
         console.log('Navbar constructor called');
+        this.profileContainer = null;
+        this.isLoggedIn = false;
+        this.userData = null;
+        this.isInitialized = false;
         
-        // Wait for DOM to be ready
+        // Bind methods to preserve context
+        this.handleProfileClick = this.handleProfileClick.bind(this);
+        this.handleOutsideClick = this.handleOutsideClick.bind(this);
+        this.logout = this.logout.bind(this);
+        
+        // Initialize when DOM is ready
+        this.initWhenReady();
+    }
+
+    initWhenReady() {
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.initNavbar());
+            document.addEventListener('DOMContentLoaded', () => this.init());
         } else {
-            this.initNavbar();
+            this.init();
         }
     }
 
-    initNavbar() {
+    init() {
+        if (this.isInitialized) return;
+        
         console.log('Initializing navbar...');
         this.profileContainer = document.getElementById('profileContainer');
         console.log('Profile container found:', this.profileContainer);
         
-        this.isLoggedIn = false;
-        this.userData = null;
+        if (this.profileContainer) {
+            this.setupEventListeners();
+            this.checkAuthStatus();
+            this.isInitialized = true;
+        } else {
+            console.log('Profile container not found, retrying in 100ms...');
+            setTimeout(() => this.init(), 100);
+        }
+    }
+
+    setupEventListeners() {
+        // Add click handler for profile container
+        this.profileContainer.addEventListener('click', this.handleProfileClick);
         
-        // Initialize the navbar
-        this.init();
+        // Close profile menu when clicking outside
+        document.addEventListener('click', this.handleOutsideClick);
         
         // Listen for settings changes
         document.addEventListener('userSettingsChanged', () => {
@@ -28,43 +55,24 @@ class Navbar {
         });
     }
 
-    init() {
-        // Check authentication status
-        this.checkAuthStatus();
-        
-        // Add click handler directly
-        if (this.profileContainer) {
-            console.log('Adding click handler to profile container');
-            this.profileContainer.addEventListener('click', (e) => {
-                console.log('Profile container clicked!');
-                // Only prevent default if user is logged in (for profile menu)
-                if (this.isLoggedIn) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.toggleProfileMenu();
-                }
-                // If not logged in, let the login link work normally
-            });
-        } else {
-            console.log('Profile container not found, retrying in 100ms...');
-            setTimeout(() => {
-                this.profileContainer = document.getElementById('profileContainer');
-                if (this.profileContainer) {
-                    console.log('Profile container found on retry');
-                    this.init();
-                }
-            }, 100);
+    handleProfileClick(e) {
+        console.log('Profile container clicked!');
+        // Only prevent default if user is logged in (for profile menu)
+        if (this.isLoggedIn) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.toggleProfileMenu();
         }
+        // If not logged in, let the login link work normally
+    }
 
-        // Close profile menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (this.profileContainer && !this.profileContainer.contains(e.target)) {
-                const menu = this.profileContainer.querySelector('.profile-menu');
-                if (menu) {
-                    menu.classList.remove('active');
-                }
+    handleOutsideClick(e) {
+        if (this.profileContainer && !this.profileContainer.contains(e.target)) {
+            const menu = this.profileContainer.querySelector('.profile-menu');
+            if (menu) {
+                menu.classList.remove('active');
             }
-        });
+        }
     }
 
     checkAuthStatus() {
@@ -76,20 +84,29 @@ class Navbar {
         console.log('User settings from localStorage:', userSettings);
         
         if (userData) {
-            const user = JSON.parse(userData);
-            const settings = userSettings ? JSON.parse(userSettings) : null;
-            
-            this.isLoggedIn = true;
-            this.userData = {
-                name: settings?.account?.fullName || user.name || 'User'
-            };
-            console.log('User data set:', this.userData);
-            this.renderProfile();
+            try {
+                const user = JSON.parse(userData);
+                const settings = userSettings ? JSON.parse(userSettings) : null;
+                
+                this.isLoggedIn = true;
+                this.userData = {
+                    name: settings?.account?.fullName || user.name || 'User'
+                };
+                console.log('User data set:', this.userData);
+                this.renderProfile();
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                this.clearUserData();
+            }
         } else {
-            this.isLoggedIn = false;
-            this.userData = null;
-            this.renderLoginButton();
+            this.clearUserData();
         }
+    }
+
+    clearUserData() {
+        this.isLoggedIn = false;
+        this.userData = null;
+        this.renderLoginButton();
     }
 
     renderProfile() {
@@ -166,13 +183,10 @@ class Navbar {
             }
             
             // Clear local storage
-            localStorage.removeItem('finmetic_user');
-            localStorage.removeItem('finmetic_user_settings');
+            this.clearLocalStorage();
             console.log('LocalStorage cleared');
             
-            this.isLoggedIn = false;
-            this.userData = null;
-            this.renderLoginButton();
+            this.clearUserData();
             
             // Redirect to login page
             console.log('Redirecting to /login/login.html');
@@ -181,16 +195,35 @@ class Navbar {
         } catch (error) {
             console.error('Logout error:', error);
             // Still clear local storage and redirect even if logout fails
-            localStorage.removeItem('finmetic_user');
-            localStorage.removeItem('finmetic_user_settings');
-            this.isLoggedIn = false;
-            this.userData = null;
-            this.renderLoginButton();
+            this.clearLocalStorage();
+            this.clearUserData();
             console.log('Redirecting to /login/login.html (fallback)');
             window.location.href = '/login/login.html';
         }
     }
+
+    clearLocalStorage() {
+        try {
+            localStorage.removeItem('finmetic_user');
+            localStorage.removeItem('finmetic_user_settings');
+        } catch (error) {
+            console.error('Error clearing localStorage:', error);
+        }
+    }
+
+    // Cleanup method
+    cleanup() {
+        if (this.profileContainer) {
+            this.profileContainer.removeEventListener('click', this.handleProfileClick);
+        }
+        document.removeEventListener('click', this.handleOutsideClick);
+        document.removeEventListener('userSettingsChanged', this.checkAuthStatus);
+    }
 }
 
 // Initialize the navbar
-console.log('Navbar script loaded'); 
+console.log('Navbar script loaded');
+const navbar = new Navbar();
+
+// Export for global access
+window.navbar = navbar; 

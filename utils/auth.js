@@ -1,9 +1,11 @@
-// Authentication utilities for the app
+// Authentication Service
 class AppAuth {
     constructor() {
         this.supabase = null;
         this.user = null;
         this.isInitialized = false;
+        this.authStateListeners = [];
+        this.sessionCheckInterval = null;
     }
 
     // Initialize Supabase client
@@ -13,7 +15,6 @@ class AppAuth {
         try {
             // Load Supabase client
             if (typeof supabase === 'undefined') {
-                // Load Supabase script if not already loaded
                 await this.loadSupabaseScript();
             }
 
@@ -26,25 +27,39 @@ class AppAuth {
             // Check current session
             await this.checkSession();
             
+            // Set up session monitoring
+            this.setupSessionMonitoring();
+            
             this.isInitialized = true;
             console.log('AppAuth initialized');
         } catch (error) {
             console.error('Failed to initialize AppAuth:', error);
+            throw error;
         }
     }
 
-    // Load Supabase script
+    // Load Supabase script with timeout
     async loadSupabaseScript() {
         return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Supabase script load timeout'));
+            }, 10000); // 10 second timeout
+
             const script = document.createElement('script');
             script.src = 'https://unpkg.com/@supabase/supabase-js@2';
-            script.onload = resolve;
-            script.onerror = reject;
+            script.onload = () => {
+                clearTimeout(timeout);
+                resolve();
+            };
+            script.onerror = () => {
+                clearTimeout(timeout);
+                reject(new Error('Failed to load Supabase script'));
+            };
             document.head.appendChild(script);
         });
     }
 
-    // Check current session
+    // Check current session with improved error handling
     async checkSession() {
         try {
             const { data: { session }, error } = await this.supabase.auth.getSession();
@@ -57,6 +72,7 @@ class AppAuth {
             if (session) {
                 this.user = session.user;
                 this.updateLocalStorage(session.user);
+                this.notifyAuthStateChange('SIGNED_IN', session);
                 return true;
             } else {
                 // Check if we have user data in localStorage
@@ -66,6 +82,7 @@ class AppAuth {
                     if (userData.isLoggedIn) {
                         // User data exists but no session, clear it
                         this.clearLocalStorage();
+                        this.notifyAuthStateChange('SIGNED_OUT', null);
                         return false;
                     }
                 }
@@ -77,48 +94,85 @@ class AppAuth {
         }
     }
 
+    // Set up session monitoring
+    setupSessionMonitoring() {
+        // Check session every 5 minutes
+        this.sessionCheckInterval = setInterval(() => {
+            this.checkSession().catch(error => {
+                console.error('Session monitoring error:', error);
+            });
+        }, 5 * 60 * 1000);
+
+        // Listen to auth state changes
+        this.supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                this.user = session.user;
+                this.updateLocalStorage(session.user);
+            } else if (event === 'SIGNED_OUT') {
+                this.user = null;
+                this.clearLocalStorage();
+            }
+            
+            this.notifyAuthStateChange(event, session);
+        });
+    }
+
     // Update localStorage with user data
     updateLocalStorage(user) {
         const userData = {
             name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
             email: user.email,
             isLoggedIn: true,
-            id: user.id
+            id: user.id,
+            lastLogin: new Date().toISOString()
         };
 
-        localStorage.setItem('finmetic_user', JSON.stringify(userData));
+        try {
+            localStorage.setItem('finmetic_user', JSON.stringify(userData));
 
-        // Create or update user settings
-        const existingSettings = localStorage.getItem('finmetic_user_settings');
-        if (!existingSettings) {
-            const userSettings = {
-                account: {
-                    emailAddress: user.email,
-                    fullName: userData.name,
-                    phoneNumber: user.phone || ''
-                }
-            };
-            localStorage.setItem('finmetic_user_settings', JSON.stringify(userSettings));
+            // Create or update user settings
+            const existingSettings = localStorage.getItem('finmetic_user_settings');
+            if (!existingSettings) {
+                const userSettings = {
+                    account: {
+                        emailAddress: user.email,
+                        fullName: userData.name,
+                        phoneNumber: user.phone || ''
+                    }
+                };
+                localStorage.setItem('finmetic_user_settings', JSON.stringify(userSettings));
+            }
+        } catch (error) {
+            console.error('Error updating localStorage:', error);
         }
     }
 
-    // Clear localStorage
+    // Clear localStorage with error handling
     clearLocalStorage() {
-        localStorage.removeItem('finmetic_user');
-        localStorage.removeItem('finmetic_user_settings');
+        try {
+            localStorage.removeItem('finmetic_user');
+            localStorage.removeItem('finmetic_user_settings');
+        } catch (error) {
+            console.error('Error clearing localStorage:', error);
+        }
     }
 
-    // Check if user is authenticated
+    // Check if user is authenticated with caching
     async isAuthenticated() {
         console.log('isAuthenticated called');
         
         // First check localStorage for user data
         const localUser = localStorage.getItem('finmetic_user');
         if (localUser) {
-            const userData = JSON.parse(localUser);
-            if (userData.isLoggedIn) {
-                console.log('User found in localStorage, authenticated');
-                return true;
+            try {
+                const userData = JSON.parse(localUser);
+                if (userData.isLoggedIn) {
+                    console.log('User found in localStorage, authenticated');
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                this.clearLocalStorage();
             }
         }
         
@@ -127,6 +181,7 @@ class AppAuth {
             console.log('AppAuth not initialized, initializing...');
             await this.init();
         }
+        
         console.log('Current user:', this.user);
         const isAuth = this.user !== null;
         console.log('Authentication check result:', isAuth);
@@ -138,7 +193,7 @@ class AppAuth {
         return this.user;
     }
 
-    // Sign out
+    // Sign out with improved error handling
     async signOut() {
         try {
             if (this.supabase) {
@@ -152,23 +207,31 @@ class AppAuth {
         } finally {
             this.user = null;
             this.clearLocalStorage();
+            this.notifyAuthStateChange('SIGNED_OUT', null);
         }
     }
 
-    // Listen to auth state changes
+    // Add auth state change listener
     onAuthStateChange(callback) {
-        if (!this.supabase) return;
-
-        return this.supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-                this.user = session.user;
-                this.updateLocalStorage(session.user);
-            } else if (event === 'SIGNED_OUT') {
-                this.user = null;
-                this.clearLocalStorage();
+        this.authStateListeners.push(callback);
+        
+        // Return unsubscribe function
+        return () => {
+            const index = this.authStateListeners.indexOf(callback);
+            if (index > -1) {
+                this.authStateListeners.splice(index, 1);
             }
-            
-            callback(event, session);
+        };
+    }
+
+    // Notify all auth state change listeners
+    notifyAuthStateChange(event, session) {
+        this.authStateListeners.forEach(callback => {
+            try {
+                callback(event, session);
+            } catch (error) {
+                console.error('Error in auth state change listener:', error);
+            }
         });
     }
 
@@ -186,6 +249,15 @@ class AppAuth {
         console.log('User authenticated, allowing access');
         return true;
     }
+
+    // Cleanup method
+    cleanup() {
+        if (this.sessionCheckInterval) {
+            clearInterval(this.sessionCheckInterval);
+            this.sessionCheckInterval = null;
+        }
+        this.authStateListeners = [];
+    }
 }
 
 // Create global instance
@@ -201,5 +273,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('AppAuth initialized successfully');
     } catch (error) {
         console.error('Error in auth initialization:', error);
+    }
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (window.appAuth) {
+        window.appAuth.cleanup();
     }
 }); 

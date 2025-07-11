@@ -1,80 +1,165 @@
-// Load components
-async function loadComponents() {
-    // Load app header
-    const headerContainer = document.getElementById('app-header-container');
-    if (headerContainer) {
-        const headerResponse = await fetch('components/navbar.html');
-        headerContainer.innerHTML = await headerResponse.text();
+// Main Application Module
+class AppManager {
+    constructor() {
+        this.isInitialized = false;
+        this.featureCache = new Map();
+        this.loadingPromises = new Map();
     }
-}
 
-// Load feature content
-async function loadFeatureContent(feature) {
-    const contentContainer = document.getElementById('content');
-    try {
-        const response = await fetch(`features/${feature}/index.html`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        contentContainer.innerHTML = await response.text();
+    async init() {
+        if (this.isInitialized) return;
+        
+        try {
+            // Check authentication first
+            if (window.appAuth) {
+                const isAuthenticated = await window.appAuth.requireAuth();
+                if (!isAuthenticated) {
+                    return; // User will be redirected to login by requireAuth()
+                }
+            }
+            
+            // Load components
+            await this.loadComponents();
+            
+            // Initialize navigation
+            if (typeof AppNavigation !== 'undefined') {
+                this.navigation = new AppNavigation();
+            }
+            
+            // Load initial route
+            this.router();
+            
+            this.isInitialized = true;
+            console.log('App initialized successfully');
+        } catch (error) {
+            console.error('Error initializing app:', error);
+        }
+    }
 
-        // Load and execute feature's JavaScript
+    async loadComponents() {
+        const headerContainer = document.getElementById('app-header-container');
+        if (headerContainer) {
+            try {
+                const headerResponse = await fetch('components/navbar.html');
+                if (!headerResponse.ok) {
+                    throw new Error(`Failed to load navbar: ${headerResponse.status}`);
+                }
+                headerContainer.innerHTML = await headerResponse.text();
+            } catch (error) {
+                console.error('Error loading navbar:', error);
+                headerContainer.innerHTML = '<div class="error">Failed to load navigation</div>';
+            }
+        }
+    }
+
+    async loadFeatureContent(feature) {
+        const contentContainer = document.getElementById('content');
+        if (!contentContainer) {
+            console.error('Content container not found');
+            return;
+        }
+
+        // Check if already loading this feature
+        if (this.loadingPromises.has(feature)) {
+            await this.loadingPromises.get(feature);
+            return;
+        }
+
+        // Create loading promise
+        const loadingPromise = this._loadFeature(feature, contentContainer);
+        this.loadingPromises.set(feature, loadingPromise);
+
+        try {
+            await loadingPromise;
+        } finally {
+            this.loadingPromises.delete(feature);
+        }
+    }
+
+    async _loadFeature(feature, contentContainer) {
+        try {
+            // Check cache first
+            if (this.featureCache.has(feature)) {
+                const cached = this.featureCache.get(feature);
+                contentContainer.innerHTML = cached.html;
+                this._loadFeatureAssets(feature);
+                return;
+            }
+
+            const response = await fetch(`features/${feature}/index.html`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const html = await response.text();
+            
+            // Cache the HTML
+            this.featureCache.set(feature, { html });
+            
+            contentContainer.innerHTML = html;
+            this._loadFeatureAssets(feature);
+
+        } catch (error) {
+            console.error('Error loading feature:', error);
+            contentContainer.innerHTML = `
+                <div class="error">
+                    <h3>Feature Not Found</h3>
+                    <p>The requested feature "${feature}" could not be loaded.</p>
+                    <button onclick="window.location.hash = 'dashboard'">Go to Dashboard</button>
+                </div>
+            `;
+        }
+    }
+
+    _loadFeatureAssets(feature) {
+        // Load JavaScript
         const script = document.createElement('script');
         script.src = `features/${feature}/index.js`;
+        script.onerror = () => console.error(`Failed to load script for feature: ${feature}`);
         document.body.appendChild(script);
 
-        // Load feature's CSS
+        // Load CSS
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = `features/${feature}/index.css`;
+        link.onerror = () => console.error(`Failed to load CSS for feature: ${feature}`);
         document.head.appendChild(link);
-    } catch (error) {
-        console.error('Error loading feature:', error);
-        contentContainer.innerHTML = '<div class="error">Feature not found</div>';
+    }
+
+    router() {
+        const hash = window.location.hash.slice(1) || 'dashboard';
+        this.loadFeatureContent(hash);
+    }
+
+    // Clear cache when needed
+    clearCache() {
+        this.featureCache.clear();
+    }
+
+    // Clear specific feature cache
+    clearFeatureCache(feature) {
+        this.featureCache.delete(feature);
     }
 }
 
-// Router function
-function router() {
-    const hash = window.location.hash.slice(1) || 'dashboard';
-    loadFeatureContent(hash);
-}
-
-// Initialize app
-async function initializeApp() {
-    try {
-        // Check authentication first
-        if (window.appAuth) {
-            const isAuthenticated = await window.appAuth.requireAuth();
-            if (!isAuthenticated) {
-                // User will be redirected to login by requireAuth()
-                return;
-            }
-        }
-        
-        // Load components first (only if containers exist)
-        await loadComponents();
-        
-        // Initialize navigation (only if AppNavigation exists)
-        if (typeof AppNavigation !== 'undefined') {
-            const navigation = new AppNavigation();
-        }
-        
-        // Load initial route (only if content container exists)
-        const contentContainer = document.getElementById('content');
-        if (contentContainer) {
-            router();
-        }
-    } catch (error) {
-        console.error('Error initializing app:', error);
-    }
-}
+// Initialize app manager
+const appManager = new AppManager();
 
 // Event listeners
-window.addEventListener('hashchange', router);
-window.addEventListener('DOMContentLoaded', initializeApp);
+window.addEventListener('hashchange', () => appManager.router());
+window.addEventListener('DOMContentLoaded', () => appManager.init());
 
 // Handle search events
 document.addEventListener('app:search', (event) => {
     const query = event.detail.query;
-    // Implement your search logic here
     console.log('Searching for:', query);
-}); 
+    // Implement search logic here
+});
+
+// Handle cache clearing events
+document.addEventListener('app:clearCache', () => {
+    appManager.clearCache();
+});
+
+// Export for global access
+window.AppManager = appManager; 
