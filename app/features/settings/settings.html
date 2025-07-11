@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Financial Engineering</title>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/app/styles/base.css">
+    <link rel="stylesheet" href="/app/styles/components.css">
+    <link rel="stylesheet" href="/app/styles/layout.css">
+    <link rel="stylesheet" href="/app/styles/sidebar.css">
+    <link rel="stylesheet" href="/app/styles/navbar.css">
+    
+    <!-- Settings Specific Styles -->
+    <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div id="navbar-container"></div>
+
+    <div class="main-layout">
+        <!-- Include Sidebar -->
+        <div id="sidebar-container"></div>
+        
+        <main class="main-content">
+            <!-- Settings Content -->
+            <div class="page-content" id="settings-content">
+                <div class="page-header">
+                    <h1 class="page-title">Settings</h1>
+                    <p class="page-subtitle">Manage your account and preferences.</p>
+                </div>
+                <div class="settings-grid">
+                    <div class="settings-section">
+                        <h3>Account Settings</h3>
+                        <div class="settings-item">
+                            <label for="emailAddress">Email Address</label>
+                            <input type="email" id="emailAddress" class="settings-input">
+                        </div>
+                        <div class="settings-item">
+                            <label for="fullName">Full Name</label>
+                            <input type="text" id="fullName" class="settings-input">
+                        </div>
+                        <div class="settings-item">
+                            <label for="phoneNumber">Phone Number</label>
+                            <input type="tel" id="phoneNumber" class="settings-input" placeholder="+1 (555) 123-4567">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Settings Actions -->
+                <div class="settings-actions">
+                    <button type="button" class="btn btn--primary" id="saveSettingsBtn">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                </div>
+
+                <!-- Success/Error Messages -->
+                <div id="settingsMessage" class="settings-message" style="display: none;">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="settingsMessageText"></span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/app/components/sidebar.js"></script>
+    <script src="/app/main.js"></script>
+    <script src="settings.js"></script>
+    <script>
+        // Initialize everything after DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Load navbar component
+                const navResponse = await fetch('/app/components/navbar.html');
+                const navHtml = await navResponse.text();
+                document.getElementById('navbar-container').innerHTML = navHtml;
+                
+                // Load navbar script
+                const navbarScript = document.createElement('script');
+                navbarScript.src = '/app/components/navbar.js?v=' + Date.now();
+                document.body.appendChild(navbarScript);
+                
+                // Wait for navbar script to load and initialize
+                navbarScript.onload = () => {
+                    console.log('Navbar script loaded, initializing...');
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => {
+                        window.navbar = new Navbar();
+                        console.log('Navbar initialized');
+                    }, 100);
+                };
+
+                // Load sidebar component
+                const sideResponse = await fetch('/app/components/sidebar.html');
+                const sideHtml = await sideResponse.text();
+                document.getElementById('sidebar-container').innerHTML = sideHtml;
+            } catch (error) {
+                console.error('Error initializing components:', error);
+            }
+        });
+    </script>
+</body>
+</html> 

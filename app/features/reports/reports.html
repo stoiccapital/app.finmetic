@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Financial Engineering</title>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/app/styles/base.css">
+    <link rel="stylesheet" href="/app/styles/components.css">
+    <link rel="stylesheet" href="/app/styles/layout.css">
+    <link rel="stylesheet" href="/app/styles/sidebar.css">
+    <link rel="stylesheet" href="/app/styles/navbar.css">
+    
+    <!-- Reports Specific Styles -->
+    <link rel="stylesheet" href="reports.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div id="navbar-container"></div>
+
+    <div class="main-layout">
+        <!-- Include Sidebar -->
+        <div id="sidebar-container"></div>
+        
+        <main class="main-content">
+            <!-- Reports Content -->
+            <div class="page-content" id="reports-content">
+                <div class="page-header">
+                    <h1 class="page-title">Reports</h1>
+                    <p class="page-subtitle">Generate and download financial reports for any time period.</p>
+                </div>
+                
+                <div class="reports-content">
+                    <!-- Report Configuration Section -->
+                    <div class="reports-section">
+                        <h2 class="section-title">Report Configuration</h2>
+                        
+                        <div class="reports-config-grid">
+                            <!-- Time Frame Selection -->
+                            <div class="config-card">
+                                <h3 class="config-title">Time Period</h3>
+                                
+                                <!-- Quick Time Frame Buttons -->
+                                <div class="time-frame-buttons">
+                                    <button class="btn btn--outline btn--small time-frame-btn active" data-period="current-month">
+                                        Current Month
+                                    </button>
+                                    <button class="btn btn--outline btn--small time-frame-btn" data-period="last-month">
+                                        Last Month
+                                    </button>
+                                    <button class="btn btn--outline btn--small time-frame-btn" data-period="last-3-months">
+                                        Last 3 Months
+                                    </button>
+                                    <button class="btn btn--outline btn--small time-frame-btn" data-period="last-6-months">
+                                        Last 6 Months
+                                    </button>
+                                    <button class="btn btn--outline btn--small time-frame-btn" data-period="current-year">
+                                        Current Year
+                                    </button>
+                                    <button class="btn btn--outline btn--small time-frame-btn" data-period="custom">
+                                        Custom Range
+                                    </button>
+                                </div>
+                                
+                                <!-- Custom Date Range -->
+                                <div class="custom-date-range" id="customDateRange" style="display: none;">
+                                    <div class="date-inputs">
+                                        <div class="form-group">
+                                            <label for="startDate" class="form-label">From Date</label>
+                                            <input type="date" id="startDate" class="form-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="endDate" class="form-label">To Date</label>
+                                            <input type="date" id="endDate" class="form-input">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Selected Period Display -->
+                                <div class="selected-period">
+                                    <strong>Selected Period:</strong>
+                                    <span id="selectedPeriodText">Current Month</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Report Type Selection -->
+                            <div class="config-card">
+                                <h3 class="config-title">Report Type</h3>
+                                
+                                <div class="report-type-options">
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" id="includeIncome" checked>
+                                        <span class="checkmark"></span>
+                                        <span class="option-text">Include Income</span>
+                                    </label>
+                                    
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" id="includeExpenses" checked>
+                                        <span class="checkmark"></span>
+                                        <span class="option-text">Include Expenses</span>
+                                    </label>
+                                    
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" id="includeSummary" checked>
+                                        <span class="checkmark"></span>
+                                        <span class="option-text">Include Summary</span>
+                                    </label>
+                                    
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" id="includeCategories" checked>
+                                        <span class="checkmark"></span>
+                                        <span class="option-text">Include Category Breakdown</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Generate Report Button -->
+                        <div class="report-actions">
+                            <button class="btn btn--primary btn--large" id="generateReportBtn">
+                                <i class="fas fa-file-alt"></i> Generate Report
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Report Preview Section -->
+                    <div class="reports-section" id="reportPreviewSection" style="display: none;">
+                        <h2 class="section-title">Report Preview</h2>
+                        
+                        <div class="report-preview-card">
+                            <!-- Report Header -->
+                            <div class="report-header">
+                                <div class="report-info">
+                                    <h3 id="reportTitle">Financial Report</h3>
+                                    <p id="reportPeriod">Period: Current Month</p>
+                                    <p id="reportGenerated">Generated on: <span id="reportDate"></span></p>
+                                </div>
+                                <div class="report-export">
+                                    <button class="btn btn--success" id="exportReportBtn">
+                                        <i class="fas fa-download"></i> Export to CSV
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Report Summary -->
+                            <div class="report-summary" id="reportSummary">
+                                <!-- Summary will be populated here -->
+                            </div>
+                            
+                            <!-- Report Data -->
+                            <div class="report-data">
+                                <div class="report-tabs">
+                                    <button class="tab-btn active" data-tab="transactions">All Transactions</button>
+                                    <button class="tab-btn" data-tab="income">Income</button>
+                                    <button class="tab-btn" data-tab="expenses">Expenses</button>
+                                    <button class="tab-btn" data-tab="categories">Categories</button>
+                                </div>
+                                
+                                <div class="tab-content">
+                                    <!-- Transactions Tab -->
+                                    <div class="tab-pane active" id="transactionsTab">
+                                        <div class="report-table-container">
+                                            <table class="report-table" id="transactionsTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Description</th>
+                                                        <th>Category</th>
+                                                        <th>Type</th>
+                                                        <th>Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="transactionsTableBody">
+                                                    <!-- Data will be populated here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Income Tab -->
+                                    <div class="tab-pane" id="incomeTab">
+                                        <div class="report-table-container">
+                                            <table class="report-table" id="incomeTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Description</th>
+                                                        <th>Category</th>
+                                                        <th>Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="incomeTableBody">
+                                                    <!-- Data will be populated here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Expenses Tab -->
+                                    <div class="tab-pane" id="expensesTab">
+                                        <div class="report-table-container">
+                                            <table class="report-table" id="expensesTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Description</th>
+                                                        <th>Category</th>
+                                                        <th>Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="expensesTableBody">
+                                                    <!-- Data will be populated here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Categories Tab -->
+                                    <div class="tab-pane" id="categoriesTab">
+                                        <div class="categories-grid">
+                                            <div class="category-chart">
+                                                <canvas id="categoryChart"></canvas>
+                                            </div>
+                                            <div class="category-breakdown">
+                                                <table class="report-table" id="categoriesTable">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Category</th>
+                                                            <th>Total Amount</th>
+                                                            <th>Percentage</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="categoriesTableBody">
+                                                        <!-- Data will be populated here -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/app/components/sidebar.js"></script>
+    <script src="/app/main.js"></script>
+    <script src="reports.js"></script>
+    <script>
+        // Initialize everything after DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Load navbar component
+                const navResponse = await fetch('/app/components/navbar.html');
+                const navHtml = await navResponse.text();
+                document.getElementById('navbar-container').innerHTML = navHtml;
+                
+                // Initialize navbar after HTML is loaded
+                const navbarScript = document.createElement('script');
+                navbarScript.src = '/app/components/navbar.js?v=' + Date.now();
+                document.body.appendChild(navbarScript);
+                
+                navbarScript.onload = () => {
+                    // Navbar script is loaded, initialize it
+                    window.navbar = new Navbar();
+                };
+
+                // Load sidebar component
+                const sideResponse = await fetch('/app/components/sidebar.html');
+                const sideHtml = await sideResponse.text();
+                document.getElementById('sidebar-container').innerHTML = sideHtml;
+            } catch (error) {
+                console.error('Error initializing components:', error);
+            }
+        });
+    </script>
+</body>
+</html> 
