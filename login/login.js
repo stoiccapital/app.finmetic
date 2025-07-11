@@ -29,7 +29,7 @@ async function checkAuthState() {
             const user = JSON.parse(userData);
             if (user.isLoggedIn) {
                 console.log('User already logged in, redirecting to app...');
-                window.location.href = '/app/index.html';
+                window.location.href = '/app/features/dashboard/';
                 return;
             }
         }
@@ -39,7 +39,7 @@ async function checkAuthState() {
             const { user } = await AuthService.getCurrentUser();
             if (user) {
                 console.log('User session found, redirecting to app...');
-                window.location.href = '/app/index.html';
+                window.location.href = '/app/features/dashboard/';
                 return;
             }
         }
@@ -132,7 +132,7 @@ async function handleSignIn(event) {
         
         // Redirect to app
         setTimeout(() => {
-            window.location.href = '/app/index.html';
+            window.location.href = '/app/features/dashboard/';
         }, 1000);
         
     } catch (error) {
@@ -216,7 +216,7 @@ async function handleSignUp(event) {
             showMessage('Account created successfully! Redirecting...', 'success');
             
             setTimeout(() => {
-                window.location.href = '/app/index.html';
+                window.location.href = '/app/features/dashboard/';
             }, 1000);
         }
         

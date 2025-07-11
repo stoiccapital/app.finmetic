@@ -19,7 +19,7 @@ const CONFIG = {
         NAME: 'Finmetic',
         VERSION: '1.0.0',
         LOGIN_URL: '/login/login.html',
-        DASHBOARD_URL: '/app/index.html'
+        DASHBOARD_URL: '/app/features/dashboard/'
     },
     
     // Authentication Settings

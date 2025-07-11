@@ -31,9 +31,9 @@ export const ROUTES = {
     
     // Authentication routes
     AUTH: {
-        LOGIN: '/login.html',
+        LOGIN: '/login/login.html',
         SIGNUP: '/signup.html',
-        DASHBOARD: '/app/index.html'
+        DASHBOARD: '/app/features/dashboard/'
     },
     
     // Public routes

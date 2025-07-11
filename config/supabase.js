@@ -145,7 +145,7 @@ class AuthService {
             const { data, error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin + '/app/index.html'
+                    redirectTo: window.location.origin + '/app/features/dashboard/'
                 }
             });
 
@@ -165,7 +165,7 @@ class AuthService {
             const { data, error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'github',
                 options: {
-                    redirectTo: window.location.origin + '/app/index.html'
+                    redirectTo: window.location.origin + '/app/features/dashboard/'
                 }
             });
 
@@ -214,7 +214,7 @@ class AuthService {
         try {
             await this._waitForClient();
             const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                redirectTo: window.location.origin + '/login/login.html'
+                redirectTo: window.location.origin + '/app/features/dashboard/'
             });
 
             if (error) throw error;
