@@ -3,76 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finmetic - Financial Arithmetic</title>
+    <title>Dashboard - Financial Engineering</title>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/app/styles/base.css">
+    <link rel="stylesheet" href="/app/styles/components.css">
+    <link rel="stylesheet" href="/app/styles/layout.css">
+    <link rel="stylesheet" href="/app/styles/sidebar.css">
+    <link rel="stylesheet" href="/app/styles/navbar.css">
+    
+    <!-- Dashboard Specific Styles -->
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .dashboard-card {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        .container {
-            text-align: center;
-            background: white;
-            padding: 60px 40px;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 90%;
-        }
-
-        .logo {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #4f46e5;
+        .dashboard-card__title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
             margin-bottom: 16px;
         }
 
-        .tagline {
-            color: #6b7280;
-            font-size: 1.1rem;
-            margin-bottom: 40px;
+        .dashboard-card__content {
+            color: #666;
         }
 
-        .login-btn {
-            background: #4f46e5;
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            display: inline-block;
+        .dashboard-header {
+            margin-bottom: 32px;
         }
 
-        .login-btn:hover {
-            background: #4338ca;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+        .dashboard-header__title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
         }
 
-        .login-btn:active {
-            transform: translateY(0);
+        .dashboard-header__subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
         }
     </style>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
 <body>
-    <div class="container">
-        <div class="logo">Finmetic</div>
-        <div class="tagline">Financial Arithmetic</div>
-        <a href="/login/login.html" class="login-btn">Log In</a>
+    <!-- Navigation Bar -->
+    <div id="navbar-container"></div>
+
+    <div class="main-layout">
+        <!-- Include Sidebar -->
+        <div id="sidebar-container"></div>
+        
+        <main class="main-content">
+            <!-- Dashboard Content -->
+            <div class="page-content" id="dashboard-content">
+                <div class="page-header">
+                    <h1 class="page-title">Welcome to Your Dashboard</h1>
+                    <p class="page-subtitle">Track your financial metrics and tools</p>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h2 class="dashboard-card__title">Portfolio Overview</h2>
+                        <div class="dashboard-card__content">
+                            <p>Track your investment portfolio performance and asset allocation.</p>
+                            <a href="/app/features/portfolio/portfolio.html" class="btn btn--primary">
+                                View Portfolio
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h2 class="dashboard-card__title">Budget Management</h2>
+                        <div class="dashboard-card__content">
+                            <p>Plan and track your monthly income and expenses.</p>
+                            <a href="/app/features/budget/budget.html" class="btn btn--primary">
+                                Manage Budget
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h2 class="dashboard-card__title">Financial Goals</h2>
+                        <div class="dashboard-card__content">
+                            <p>Set and track your financial objectives and milestones.</p>
+                            <a href="/app/features/goals/goals.html" class="btn btn--primary">
+                                Set Goals
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h2 class="dashboard-card__title">Income & Expenses</h2>
+                        <div class="dashboard-card__content">
+                            <p>Track your income and expenses with detailed categorization.</p>
+                            <a href="/app/features/income-expense/income-expense.html" class="btn btn--primary">
+                                Track Transactions
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h2 class="dashboard-card__title">Analytics</h2>
+                        <div class="dashboard-card__content">
+                            <p>Analyze your financial performance with detailed insights.</p>
+                            <a href="/app/features/analytics/analytics.html" class="btn btn--primary">
+                                View Analytics
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h2 class="dashboard-card__title">Reports</h2>
+                        <div class="dashboard-card__content">
+                            <p>Generate and download comprehensive financial reports.</p>
+                            <a href="/app/features/reports/reports.html" class="btn btn--primary">
+                                Generate Reports
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
+
+    <!-- Scripts -->
+    <!-- Environment Variables Loader (load first) -->
+    <script src="/config/env-loader.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- API Keys -->
+    <script src="/config/supabase.js"></script>
+    <!-- Configuration -->
+    <script src="/config/config.js"></script>
+    <script src="/utils/auth.js"></script>
+    <script src="/app/components/sidebar.js"></script>
+    <script src="/app/main.js"></script>
+    <script>
+        // Initialize everything after DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Load navbar component
+                const navResponse = await fetch('/app/components/navbar.html');
+                const navHtml = await navResponse.text();
+                document.getElementById('navbar-container').innerHTML = navHtml;
+                
+                // Load navbar script
+                const navbarScript = document.createElement('script');
+                navbarScript.src = '/app/components/navbar.js?v=' + Date.now();
+                document.body.appendChild(navbarScript);
+                
+                // Wait for navbar script to load and initialize
+                navbarScript.onload = () => {
+                    console.log('Navbar script loaded, initializing...');
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => {
+                        window.navbar = new Navbar();
+                        console.log('Navbar initialized');
+                    }, 100);
+                };
+
+                // Load sidebar component
+                const sideResponse = await fetch('/app/components/sidebar.html');
+                const sideHtml = await sideResponse.text();
+                document.getElementById('sidebar-container').innerHTML = sideHtml;
+            } catch (error) {
+                console.error('Error initializing components:', error);
+            }
+        });
+    </script>
 </body>
 </html> 
